@@ -2,17 +2,16 @@ package br.com.dio;
 
 import br.com.dio.model.Board;
 import br.com.dio.model.Space;
-
+import br.com.dio.util.BoardTemplate;
+import static br.com.dio.util.BoardTemplate.BOARD_TEMPLATE;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
-import java.util.stream.Stream;
-
-import static br.com.dio.util.BoardTemplate.BOARD_TEMPLATE;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
+import java.util.Scanner;
 import static java.util.stream.Collectors.toMap;
+import java.util.stream.Stream;
 
 public class Main {
 
@@ -23,11 +22,18 @@ public class Main {
     private final static int BOARD_LIMIT = 9;
 
     public static void main(String[] args) {
-        final var positions = Stream.of(args)
-                .collect(toMap(
-                        k -> k.split(";")[0],
-                        v -> v.split(";")[1]
-                ));
+        // Se não houver argumentos, usamos o template padrão
+        Map<String, String> positions;
+        if (args.length > 0) {
+            positions = Stream.of(args)
+                    .collect(toMap(
+                            k -> k.split(";")[0],
+                            v -> v.split(";")[1]
+                    ));
+        } else {
+            positions = BoardTemplate.getDefaultTemplate();
+        }
+        
         var option = -1;
         while (true){
             System.out.println("Selecione uma das opções a seguir");
@@ -54,9 +60,7 @@ public class Main {
                 default -> System.out.println("Opção inválida, selecione uma das opções do menu");
             }
         }
-    }
-
-    private static void startGame(final Map<String, String> positions) {
+    }    private static void startGame(final Map<String, String> positions) {
         if (nonNull(board)){
             System.out.println("O jogo já foi iniciado");
             return;
@@ -66,7 +70,8 @@ public class Main {
         for (int i = 0; i < BOARD_LIMIT; i++) {
             spaces.add(new ArrayList<>());
             for (int j = 0; j < BOARD_LIMIT; j++) {
-                var positionConfig = positions.get("%s,%s".formatted(i, j));
+                var key = "%s,%s".formatted(i, j);
+                var positionConfig = positions.getOrDefault(key, "0,false");
                 var expected = Integer.parseInt(positionConfig.split(",")[0]);
                 var fixed = Boolean.parseBoolean(positionConfig.split(",")[1]);
                 var currentSpace = new Space(expected, fixed);
@@ -76,6 +81,7 @@ public class Main {
 
         board = new Board(spaces);
         System.out.println("O jogo está pronto para começar");
+        showCurrentGame();
     }
 
 
@@ -109,9 +115,7 @@ public class Main {
         if (!board.clearValue(col, row)){
             System.out.printf("A posição [%s,%s] tem um valor fixo\n", col, row);
         }
-    }
-
-    private static void showCurrentGame() {
+    }    private static void showCurrentGame() {
         if (isNull(board)){
             System.out.println("O jogo ainda não foi iniciado iniciado");
             return;
@@ -120,11 +124,18 @@ public class Main {
         var args = new Object[81];
         var argPos = 0;
         for (int i = 0; i < BOARD_LIMIT; i++) {
-            for (var col: board.getSpaces()){
-                args[argPos ++] = " " + ((isNull(col.get(i).getActual())) ? " " : col.get(i).getActual());
+            for (int j = 0; j < BOARD_LIMIT; j++) {
+                var space = board.getSpaces().get(j).get(i);
+                if (space.isFixed()) {
+                    // Números fixos são mostrados com colchetes [ ]
+                    args[argPos++] = "[" + space.getActual() + "]";
+                } else {
+                    args[argPos++] = " " + ((isNull(space.getActual())) ? " " : space.getActual()) + " ";
+                }
             }
         }
         System.out.println("Seu jogo se encontra da seguinte forma");
+        System.out.println("Números entre colchetes [x] são fixos e não podem ser alterados");
         System.out.printf((BOARD_TEMPLATE) + "\n", args);
     }
 
